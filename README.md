@@ -148,3 +148,71 @@ This project shows skills in:
 * Clean project structuring
 
 ---
+
+## How to Run
+
+Code is in `src/` (data loading, RFM, KMeans/DBSCAN training) and `app/` (Flask API).
+
+### 1. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Train and save the models
+
+From the project root (with `data/raw/online_retail.csv` in place):
+
+```bash
+# KMeans segmentation (required first)
+python -m src.train_kmeans
+# Optional: DBSCAN for anomaly detection (uses saved scaler)
+python -m src.train_dbscan
+```
+
+Or use the backward-compatible entry point:
+
+```bash
+python -m src.train
+```
+
+This uses `src/data_loader.py` to load/clean data, then:
+
+- KMeans: compute RFM, fit scaler + K-Means (4 segments), save `scaler.joblib`, `kmeans.joblib`, `segment_map.joblib`, and `data/processed/rfm_with_segments.parquet`
+- DBSCAN: fit on scaled RFM, save `dbscan.joblib` and add `DBSCAN_Cluster` to the parquet
+
+### 3. Start the Flask analytics API
+
+```bash
+flask --app app.app run
+```
+
+Or:
+
+```bash
+python -m flask --app app.app run
+```
+
+### 4. API endpoints and UI
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | Service info and list of endpoints |
+| `GET /health` | Health check (models and RFM data loaded) |
+| `GET /analytics/overview` | Total customers and segment counts |
+| `GET /analytics/segments` | Per-segment counts and mean RFM |
+| `GET /analytics/summary` | RFM cluster summary (mean Recency, Frequency, Monetary per segment) |
+| `GET /analytics/customer/<customer_id>` | Segment and RFM for one customer |
+| **`GET /ui`** | **Dashboard UI** – try endpoints from the browser |
+| **`GET /apidocs`** | **Swagger (OpenAPI) UI** – interactive API docs |
+
+After starting the app, open **http://127.0.0.1:5000/ui** for the dashboard or **http://127.0.0.1:5000/apidocs** for Swagger.
+
+Example:
+
+```bash
+curl http://127.0.0.1:5000/analytics/overview
+curl http://127.0.0.1:5000/analytics/customer/17850
+```
+
+---
